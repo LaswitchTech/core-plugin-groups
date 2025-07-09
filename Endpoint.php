@@ -1,162 +1,390 @@
 <?php
 
-/**
- * Core Framework - GroupsEndpoint
- *
- * @license    MIT (https://mit-license.org/)
- * @author     Louis Ouellet <louis@laswitchtech.com>
- */
-
 // Import additionnal class into the global namespace
-use \LaswitchTech\Core\Objects;
-use \LaswitchTech\Core\Abstracts\Endpoint;
+use \LaswitchTech\Core\Base\BaseEndpoint;
 
-class GroupsEndpoint extends Endpoint {
+class GroupsEndpoint extends BaseEndpoint {
 
     /**
      * Constructor
      */
     public function __construct()
     {
-
-        // Call Parent Constructor
+        // Call the parent constructor
         parent::__construct();
 
-        // Retrieve the namespace
-        $namespace = $this->Request->getNamespace();
+        // Initialize the Endpoint
+        $this->init('groups');
 
-        // Set Global access
-        $this->Public = false;
-
-        // Set Level
-        switch($namespace){
-            case "/groups/index":
-            case "/groups/fetch":
-            case "/groups/users":
-                $this->Level = 1;
-                break;
-            case "/groups/update":
-                $this->Level = 3;
-                break;
-        }
+        // Set Properties
+        $this->required = ['name'];
+        $this->optional = ['description','users','isDefault'];
     }
 
     /**
-     * Fetch all groups
-     */
-    public function indexAction(): array
-    {
-        // Set the default message
-        $message = ["status" => 200, "message" => "OK", "data" => $this->Model->Groups->list()];
-
-        // Return the message
-        return $message;
-    }
-
-    /**
-     * Fetch a Group's Information
+     * Retrieve a record
      */
     public function fetchAction(): array
     {
-        // Import Global Variables
-        global $CONFIG;
+        // Call the parent constructor
+        $message = parent::fetchAction();
 
-        // Set the default message
-        $message = ["status" => 200, "message" => "OK", "data" => [
-            "record" => $this->Model->Groups->get(intval($this->Request->getParams('GET', 'id')))
-        ]];
+        // Check if the records is accessible
+        if($message['status'] == 200){
+
+            // Check if the Users is accessible
+            if($this->Helper->Core->isInstalled('users')){
+
+                // Initialize the dependencies
+                $message['data']['dependencies']['users'] = [];
+
+                // Loop through the users to fetch them.
+                foreach($message['data']['record']['users'] as $id){
+                    $message['data']['dependencies']['users'][$id] = $this->Model->Users->fetch($id);
+                }
+
+                // Set the users in the record
+                $message['data']['record']['users'] = $message['data']['dependencies']['users'];
+            }
+
+            // Check if the Relationship Plugin is accessible
+            if($this->Helper->Core->isInstalled('relationship')){
+                $message['data']['dependencies']['relationship'] = $this->Model->Relationship->get($this->basename, $message['data']['record']['id']);
+                if($this->Helper->Core->isInstalled('vcards') && array_key_exists('vcard', $message['data']['record'])){
+                    $message['data']['dependencies']['relationship'] = array_merge(
+                        $message['data']['dependencies']['relationship'],
+                        $this->Model->Relationship->get('vcards', $message['data']['record']['vcard']['id'])
+                    );
+                }
+            }
+
+            // Check if the Events is accessible
+            if($this->Helper->Core->isInstalled('event')){
+                $message['data']['dependencies']['event'] = $this->Model->Event->fetchAll([
+                    ["key" => "targetTable", "operator" => "=", "value" => $this->basename],
+                    ["key" => "targetId", "operator" => "=", "value" => $message['data']['record']['id']],
+                    ["key" => "isArchived", "operator" => "<>", "value" => 1],
+                ]);
+            }
+
+            // Check if the Notes is accessible
+            if($this->Helper->Core->isInstalled('notes')){
+                $message['data']['dependencies']['notes'] = $this->Model->Notes->fetchAll([
+                    ["key" => "targetTable", "operator" => "=", "value" => $this->basename],
+                    ["key" => "targetId", "operator" => "=", "value" => $message['data']['record']['id']],
+                    ["key" => "isArchived", "operator" => "<>", "value" => 1],
+                ]);
+            }
+        }
 
         // Return the message
         return $message;
     }
 
     /**
-     * Update a Group
+     * Create a record
      */
-    public function updateAction(): array
+    public function createAction(): array
     {
-        // Import Global Variables
-        global $CSRF;
+        // Call the parent constructor
+        $message = parent::createAction();
 
-        // Set the default message
-        $message = ["status" => 200, "message" => "OK", "data" => []];
-
-        // Check the request method
-        if($this->Request->getMethod() == "POST"){
-            $message["data"]["CSRF"] = [
-                "token" => $CSRF->token(),
-                "key" => $CSRF->key()
-            ];
-        }
-
-        // Retrieve the group id
-        $id = intval($this->Request->getParams('REQUEST','id'));
-
-        // Retrieve the group
-        $group = $this->Model->Groups->get($id, false);
-
-        // Check if the group exists
-        if(empty($group)){
-            $message = ["status" => 404, "message" => "Not Found", "data" => "Could not find the requested group."];
-        }
-
-        // Check if the group is accessible
+        // Check if the record is accessible
         if($message['status'] == 200){
 
-            // Check the request method
-            if($this->Request->getMethod() == "POST"){
-
-                // Retrieve the parameters
-                $parameters = $this->Request->getParams('REQUEST');
+            // Check if the Event Plugin is accessible
+            if($this->Helper->Core->isInstalled('event')){
 
                 // Initialize the Events
-                $message['data']['events'] = [];
+                $message['data']['event'] = [];
 
-                // Update the group
-                foreach($parameters as $key => $value){
-                    if(isset($group[$key])){
-                        switch($key){
-                            case 'users':
-                                if(is_array($value)){
-                                    $group[$key] = [];
-                                    foreach($value as $objId){
-                                        $group[$key][] = intval($objId);
-                                    }
-                                    $group[$key] = array_unique($group[$key]);
-                                } else {
-                                    $group[$key] = $value;
-                                }
-                                break;
-                            case 'isDefault':
-                                $group[$key] = intval(filter_var($value, FILTER_VALIDATE_BOOLEAN));
-                                break;
-                            default:
-                                $group[$key] = $value;
-                                break;
-                        }
-                    }
-                }
+                // Setup a new event
+                $event = [
+                    'category' => 'Group',
+                    'message' => 'New Group Created by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                    'icon' => 'circle',
+                    'color' => 'secondary',
+                    'link' => '/plugin/groups/details?id='.$message['data']['record']['id'].'&name='.urlencode($message['data']['record']['name']),
+                    'targetTable' => 'groups',
+                    'targetId' => $message['data']['record']['id'],
+                ];
 
-                // Update the group
-                $affectedRows = $this->Model->Groups->update($id, $group);
-
-                // Retrieve the final group
-                $message['data']['record'] = $this->Model->Groups->get($id);
-            } else {
-                $message = ["status" => 405, "message" => "Method Not Allowed", "data" => "The method is not allowed for the requested URL."];
+                // Create the event
+                $message['data']['event'][] = $this->Model->Event->create($event);
             }
         }
 
+        // Return the message
         return $message;
     }
 
     /**
-     * Fetch all users
+     * Update a record
      */
-    public function usersAction(): array
+    public function updateAction(): array
     {
-        // Set the default message
-        $message = ["status" => 200, "message" => "OK", "data" => $this->Model->Groups->users()];
+        // Call the parent constructor
+        $message = parent::updateAction();
+
+        // Check if the record is accessible
+        if($message['status'] == 200){
+
+            // Check if the Event Plugin is accessible
+            if($this->Helper->Core->isInstalled('event')){
+
+                // Initialize the Events
+                $message['data']['event'] = [];
+
+                // Setup a new event
+                $event = [
+                    'category' => 'Group',
+                    'message' => 'Group Updated by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                    'icon' => 'circle',
+                    'color' => 'secondary',
+                    'link' => '/plugin/groups/details?id='.$message['data']['record']['id'],
+                    'targetTable' => 'groups',
+                    'targetId' => $message['data']['record']['id'],
+                ];
+
+                // Create the event
+                $message['data']['event'][] = $this->Model->Event->create($event);
+            }
+        }
+
+        // Return the message
+        return $message;
+    }
+
+    /**
+     * Delete a record
+     */
+    public function deleteAction(): array
+    {
+        // Call the parent constructor
+        $message = parent::deleteAction();
+
+        // Check if the record is accessible
+        if($message['status'] == 200){
+
+            // Check if the Event Plugin is accessible
+            if($this->Helper->Core->isInstalled('event')){
+
+                // Initialize the Events
+                $message['data']['event'] = [];
+
+                // Setup a new event
+                $event = [
+                    'category' => 'Group',
+                    'message' => 'Group Deleted by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                    'icon' => 'circle',
+                    'color' => 'secondary',
+                    'link' => '/plugin/groups/details?id='.$message['data']['record']['id'],
+                    'targetTable' => 'groups',
+                    'targetId' => $message['data']['record']['id'],
+                ];
+
+                // Create the event
+                $message['data']['event'][] = $this->Model->Event->create($event);
+            }
+
+            // Check if the Clients Plugin is accessible
+            if($this->Helper->Core->isInstalled('clients')){
+
+                // Delete the client
+                $affectedRows = $this->Model->Clients->delete($message['data']['record']['client']['id']);
+
+                // Check if the Event Plugin is accessible
+                if($affectedRows && $this->Helper->Core->isInstalled('event')){
+
+                    // Setup a new event
+                    $event = [
+                        'category' => 'Client',
+                        'message' => 'Client Deleted for <vcard>'.$message['data']['record']['vcard']['id'].':'.$message['data']['record']['vcard']['name'].'</vcard> by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                        'icon' => 'circle',
+                        'color' => 'secondary',
+                        'link' => '/plugin/groups/details?id='.$message['data']['record']['id'],
+                        'targetTable' => 'groups',
+                        'targetId' => $message['data']['record']['id'],
+                    ];
+
+                    // Create the event
+                    $message['data']['event'][] = $this->Model->Event->create($event);
+
+                    // Setup a new event for the client
+                    $event['link'] = '/plugin/clients/index?id='.$message['data']['record']['client']['id'];
+                    $event['targetTable'] = 'clients';
+                    $event['targetId'] = $message['data']['record']['client']['id'];
+
+                    // Create the event
+                    $message['data']['event'][] = $this->Model->Event->create($event);
+                }
+
+                // Check if the Tasks Plugin is accessible
+                if($this->Helper->Core->isInstalled('tasks')){
+
+                    // Delete the task
+                    $affectedRows = $this->Model->Tasks->delete($message['data']['record']['client']['task']);
+
+                    // Check if the Event Plugin is accessible
+                    if($affectedRows && $this->Helper->Core->isInstalled('event')){
+
+                        // Setup a new event
+                        $event = [
+                            'category' => 'Task',
+                            'message' => 'Task Deleted by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                            'icon' => 'circle',
+                            'color' => 'secondary',
+                            'link' => '/plugin/groups/details?id='.$message['data']['record']['id'],
+                            'targetTable' => 'groups',
+                            'targetId' => $message['data']['record']['id'],
+                        ];
+
+                        // Create the event
+                        $message['data']['event'][] = $this->Model->Event->create($event);
+
+                        // Setup a new event for the task
+                        $event['link'] = '/plugin/tasks/index?id='.$message['data']['record']['client']['task'];
+                        $event['targetTable'] = 'tasks';
+                        $event['targetId'] = $message['data']['record']['client']['task'];
+
+                        // Create the event
+                        $message['data']['event'][] = $this->Model->Event->create($event);
+                    }
+                }
+            }
+
+            // Check if the vCards Plugin is accessible
+            if($this->Helper->Core->isInstalled('vcards')){
+
+                // Delete the vCard
+                $affectedRows = $this->Model->Vcards->delete($message['data']['record']['vcard']['id']);
+
+                // Check if the Event Plugin is accessible
+                if($affectedRows && $this->Helper->Core->isInstalled('event')){
+
+                    // Setup a new event
+                    $event = [
+                        'category' => 'vCard',
+                        'message' => 'vCard Deleted by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                        'icon' => 'circle',
+                        'color' => 'secondary',
+                        'link' => '/plugin/groups/details?id='.$message['data']['record']['id'],
+                        'targetTable' => 'groups',
+                        'targetId' => $message['data']['record']['id'],
+                    ];
+
+                    // Create the event
+                    $message['data']['event'][] = $this->Model->Event->create($event);
+                }
+            }
+
+            // Check if the Tasks Plugin is accessible
+            if($this->Helper->Core->isInstalled('tasks')){
+
+                // Delete the task
+                $affectedRows = $this->Model->Tasks->delete($message['data']['record']['task']['id']);
+
+                // Check if the Event Plugin is accessible
+                if($affectedRows && $this->Helper->Core->isInstalled('event')){
+
+                    // Setup a new event
+                    $event = [
+                        'category' => 'Task',
+                        'message' => 'Task Deleted by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                        'icon' => 'circle',
+                        'color' => 'secondary',
+                        'link' => '/plugin/groups/details?id='.$message['data']['record']['id'],
+                        'targetTable' => 'groups',
+                        'targetId' => $message['data']['record']['id'],
+                    ];
+
+                    // Create the event
+                    $message['data']['event'][] = $this->Model->Event->create($event);
+
+                    // Setup a new event for the task
+                    $event['link'] = '/plugin/tasks/index?id='.$message['data']['record']['task']['id'];
+                    $event['targetTable'] = 'tasks';
+                    $event['targetId'] = $message['data']['record']['task']['id'];
+
+                    // Create the event
+                    $message['data']['event'][] = $this->Model->Event->create($event);
+                }
+            }
+        }
+
+        // Return the message
+        return $message;
+    }
+
+    /**
+     * Archive a record
+     */
+    public function archiveAction(): array
+    {
+        // Call the parent constructor
+        $message = parent::archiveAction();
+
+        // Check if the record is accessible
+        if($message['status'] == 200){
+
+            // Check if the Event Plugin is accessible
+            if($this->Helper->Core->isInstalled('event')){
+
+                // Initialize the Events
+                $message['data']['event'] = [];
+
+                // Setup a new event
+                $event = [
+                    'category' => 'Group',
+                    'message' => 'Group Archived by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                    'icon' => 'circle',
+                    'color' => 'secondary',
+                    'link' => '/plugin/groups/details?id='.$message['data']['record']['id'],
+                    'targetTable' => 'groups',
+                    'targetId' => $message['data']['record']['id'],
+                ];
+
+                // Create the event
+                $message['data']['event'][] = $this->Model->Event->create($event);
+            }
+        }
+
+        // Return the message
+        return $message;
+    }
+
+    /**
+     * Recover a record
+     */
+    public function recoverAction(): array
+    {
+        // Call the parent constructor
+        $message = parent::recoverAction();
+
+        // Check if the record is accessible
+        if($message['status'] == 200){
+
+            // Check if the Event Plugin is accessible
+            if($this->Helper->Core->isInstalled('event')){
+
+                // Initialize the Events
+                $message['data']['event'] = [];
+
+                // Setup a new event
+                $event = [
+                    'category' => 'Group',
+                    'message' => 'Group Recovered by <vcard>'.$this->Auth->user()->vcard['id'].':'.$this->Auth->user()->username.'</vcard>',
+                    'icon' => 'circle',
+                    'color' => 'secondary',
+                    'link' => '/plugin/groups/details?id='.$message['data']['record']['id'],
+                    'targetTable' => 'groups',
+                    'targetId' => $message['data']['record']['id'],
+                ];
+
+                // Create the event
+                $message['data']['event'][] = $this->Model->Event->create($event);
+            }
+        }
 
         // Return the message
         return $message;
