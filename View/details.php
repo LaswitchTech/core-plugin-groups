@@ -1,14 +1,8 @@
-<!--
-  Core Framework - View File
-
-  @license    MIT (https://mit-license.org/)
-  @author     Louis Ouellet <louis@laswitchtech.com>
--->
 <div class="col-12" id="layout"></div>
 <script>
     $(document).ready(function(){
         $.ajax({
-            url: '/endpoint.php/groups/fetch?id=<?= $this->Request->getParams('GET', 'id') ?>',
+            url: '/api/groups/fetch?id=<?= $this->Request->getParams('GET', 'id') ?>',
             type: 'GET',dataType: 'json',
             error: function(xhr, status, error) {
                 let color = 'info', icon = 'question-circle', title = builder.Locale.get(xhr.statusText), content = builder.Locale.get(xhr.responseText);
@@ -20,7 +14,11 @@
                 builder.Component("alert","#layout",{icon:icon,color:color,title:title},function(alert,component){component.content.html('<pre class="m-0 p-2">'+content+'</pre>');});
             },
             success: function(response) {
-                console.log(response);
+
+                // Configure Storage
+                builder.Storage.setKey('group:'+response.record.id);
+                builder.Storage.set(response);
+                console.log(builder.Storage.get())
 
                 // Set the color, icon and label
                 var color = ['secondary','primary','success','warning','danger'];
@@ -112,14 +110,11 @@
 
                                                     // AJAX Request
                                                     $.ajax({
-                                                        url: '/endpoint.php/groups/update?id='+response.record.id,
+                                                        url: '/api/groups/update?id='+builder.Storage.get('record:id'),
+                                                        headers: {'X-CSRF-Authorization': CSRF_KEY},
                                                         type: 'POST',dataType: 'json',
                                                         data: form.val(),
                                                         success: function(response) {
-
-                                                            // Update the CSRF Token
-                                                            CSRF_KEY = response.CSRF.key;
-                                                            CSRF_TOKEN = response.CSRF.token;
 
                                                             // Hide the modal
                                                             modal.hide();
@@ -129,20 +124,6 @@
                                             },
                                         },
                                         function(form,component){
-
-                                            // csrf
-                                            form.add(
-                                                {
-                                                    name: CSRF_KEY,
-                                                    label: 'csrf',
-                                                    icon: 'hash',
-                                                    type: 'hidden',
-                                                    value: CSRF_TOKEN,
-                                                },
-                                                function(input,form){
-                                                    input.css('display','none');
-                                                },
-                                            );
 
                                             // name
                                             form.add(
@@ -237,7 +218,7 @@
                                             var users = [];
                                             for(const [key, record] of Object.entries(table.data())){
                                                 if(data.id !== record.id){
-                                                    users.push(record.id);
+                                                    users.push(parseInt(record.id));
                                                 }
                                             }
 
@@ -245,18 +226,14 @@
                                             var ajaxData = {
                                                 users: JSON.stringify(users),
                                             };
-                                            ajaxData[CSRF_KEY] = CSRF_TOKEN;
 
                                             // AJAX Request
                                             $.ajax({
-                                                url: '/endpoint.php/groups/update?id='+response.record.id,
+                                                url: '/api/groups/update?id='+builder.Storage.get('record:id'),
+                                                headers: {'X-CSRF-Authorization': CSRF_KEY},
                                                 type: 'POST',dataType: 'json',
                                                 data: ajaxData,
                                                 success: function(response) {
-
-                                                    // Update the CSRF Token
-                                                    CSRF_KEY = response.CSRF.key;
-                                                    CSRF_TOKEN = response.CSRF.token;
                                                 }
                                             });
                                         },
@@ -273,9 +250,9 @@
 
                                             // AJAX Request
                                             $.ajax({
-                                                url: '/endpoint.php/groups/users',
+                                                url: '/api/auth/users',
                                                 type: 'GET',dataType: 'json',
-                                                success: function(users) {
+                                                success: function(response) {
 
                                                     // Retrieve existing members
                                                     var members = []
@@ -285,7 +262,7 @@
 
                                                     // Build options
                                                     var options = [];
-                                                    for(const [key, user] of Object.entries(users)){
+                                                    for(const [key, user] of Object.entries(response.records)){
                                                         if($.inArray(user.id, members) === -1){
                                                             options.push({id: user.id, text: user.username+' - '+user.vcard.name});
                                                         }
@@ -329,27 +306,18 @@
                                                                         submit: function(form){
 
                                                                             // Add the record to the table
-                                                                            dt.row.add(users[form.val()]).draw();
+                                                                            dt.row.add(response.records[form.val()]).draw();
 
                                                                             // Add the user to the list of members
                                                                             members.push(form.val());
 
-                                                                            // Set the AJAX DATA
-                                                                            var ajaxData = {
-                                                                                users: members,
-                                                                            };
-                                                                            ajaxData[CSRF_KEY] = CSRF_TOKEN;
-
                                                                             // AJAX Request
                                                                             $.ajax({
-                                                                                url: '/endpoint.php/groups/update?id='+response.record.id,
-                                                                                type: 'POST',dataType: 'json',
-                                                                                data: ajaxData,
+                                                                                url: '/api/groups/update?id='+builder.Storage.get('record:id'),
+                                                                                headers: {'X-CSRF-Authorization': CSRF_KEY},
+                                                                                type: 'POST', dataType: 'json',
+                                                                                data: { users: members },
                                                                                 success: function(response) {
-
-                                                                                    // Update the CSRF Token
-                                                                                    CSRF_KEY = response.CSRF.key;
-                                                                                    CSRF_TOKEN = response.CSRF.token;
 
                                                                                     // Hide the modal
                                                                                     modal.hide();
@@ -425,7 +393,20 @@
                             },
                             function(tab,nav){
                                 tab.addClass('px-4 py-3');
-                                EventFeed(response.record.events ?? {}, tab);
+                                EventFeed(builder.Storage.get('dependencies:event') ?? {}, tab);
+                            },
+                        );
+                        tabs.add(
+                            'related',
+                            {
+                                icon: "diagram-2",
+                                label: builder.Locale.get("Related"),
+                            },
+                            function(tab,nav){
+                                tab.addClass('px-4 py-3');
+                                RelationshipFeed(builder.Storage.getKey(), tab, function(feed){
+                                    // card.related.feed = feed;
+                                });
                             },
                         );
                     },
