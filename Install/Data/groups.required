@@ -1,0 +1,90 @@
+[
+    {
+        "id": 1,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-07-10 11:20:26",
+        "owner": "demo",
+        "name": "Administrator",
+        "description": "This group provides members of the administrators",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 2,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-04-07 15:10:38",
+        "owner": "demo",
+        "name": "User",
+        "description": "All users are member of this group",
+        "users": null,
+        "isDefault": 1,
+        "isArchived": 0
+    },
+    {
+        "id": 3,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-07-10 12:52:29",
+        "owner": "demo",
+        "name": "Developer",
+        "description": "This group contains all developers",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 4,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-04-07 15:10:38",
+        "owner": "demo",
+        "name": "Business Account Manager",
+        "description": "This group contains all business account managers",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 5,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-04-15 11:39:35",
+        "owner": "demo",
+        "name": "Account Manager",
+        "description": "This group contains all account managers",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 6,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-04-15 11:39:33",
+        "owner": "demo",
+        "name": "Marketing Manager",
+        "description": "This group contains all marketing managers",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 7,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-04-15 11:39:30",
+        "owner": "demo",
+        "name": "Marketer",
+        "description": "This group contains all marketers",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 9999,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-04-07 15:10:38",
+        "owner": "demo",
+        "name": "dummy",
+        "description": null,
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    }
+]
