@@ -30,17 +30,27 @@ class GroupsModel extends BaseModel {
         foreach($data as $key => $value){
 
             // Add exceptions for specific fields
-            if($key === 'users' && is_array($value)){
+            if(in_array($key, ['users']) && is_array($value)){
 
-                // Loop through each userId in the array
-                foreach($value as $userKey => $userId){
+                // Loop through each value in the array
+                foreach($value as $subkey => $subvalue){
 
-                    // Convert the userId to an integer
-                    $value[$userKey] = (int)$userId;
+                    // Convert the value to an integer
+                    $value[$subkey] = (int)$subvalue;
                 }
 
                 // Filter unique user IDs
                 $value = array_unique($value);
+
+                // Sort the array
+                sort($value);
+            }
+
+            // Add exceptions for specific fields
+            if(in_array($key, ['isDefault'])){
+
+                // Filter boolean
+                $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
             }
 
             // Set the value back to the data array
