@@ -2,10 +2,10 @@
     {
         "id": 1,
         "created": "2025-04-07 15:10:38",
-        "modified": "2025-07-10 11:20:26",
+        "modified": "2025-09-18 11:00:31",
         "owner": "demo",
         "name": "Administrator",
-        "description": "This group provides members of the administrators",
+        "description": "This group provides membership for the administrators",
         "users": null,
         "isDefault": 0,
         "isArchived": 0
