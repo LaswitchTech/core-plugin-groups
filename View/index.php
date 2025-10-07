@@ -8,7 +8,7 @@
                     {key: 'isArchived', operator: '<>', value: 1},
                 ],
                 dblclick: function(event, table, dt, node, data){
-                    window.location.href = "/plugin/groups/details?id=" + data.id + "&name=" + encodeURIComponent(data.name);
+                    window.location.href = "/security/groups/details?id=" + data.id + "&name=" + encodeURIComponent(data.name);
                 },
                 selectTools: false,
                 actions: {
@@ -16,7 +16,7 @@
                         label:'Details',
                         icon:'eye',
                         action:function(event, table, dt, node, row, data){
-                            window.location.href = "/plugin/groups/details?id=" + data.id + "&name=" + encodeURIComponent(data.name);
+                            window.location.href = "/security/groups/details?id=" + data.id + "&name=" + encodeURIComponent(data.name);
                         }
                     },
                     archive:{
