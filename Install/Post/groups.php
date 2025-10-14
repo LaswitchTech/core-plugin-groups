@@ -15,6 +15,7 @@ class GroupsPostModel extends GroupsModel {
 
             // Handle specific fields
             switch($key){
+                case 'id':
                 case 'users':
                     break;
                 default:
