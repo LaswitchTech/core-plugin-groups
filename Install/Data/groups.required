@@ -77,6 +77,61 @@
         "isArchived": 0
     },
     {
+        "id": 8,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-10-15 12:06:27",
+        "owner": "demo",
+        "name": "Documentation Clerk",
+        "description": "This group contains all documentation clerks",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 9,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-10-15 12:06:30",
+        "owner": "demo",
+        "name": "Consultation Clerk",
+        "description": "This group contains all consultation clerks",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 10,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-10-15 12:06:32",
+        "owner": "demo",
+        "name": "Consultant",
+        "description": "This group contains all consultants",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 11,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-10-15 12:06:34",
+        "owner": "demo",
+        "name": "Accountant",
+        "description": "This group contains all accountants",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
+        "id": 12,
+        "created": "2025-04-07 15:10:38",
+        "modified": "2025-10-15 12:07:47",
+        "owner": "demo",
+        "name": "Consulting Manager",
+        "description": "This group contains all consulting managers",
+        "users": null,
+        "isDefault": 0,
+        "isArchived": 0
+    },
+    {
         "id": 9999,
         "created": "2025-04-07 15:10:38",
         "modified": "2025-04-07 15:10:38",
